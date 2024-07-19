@@ -1,0 +1,357 @@
+/*	                                       1. Customer Demographics KPIs:
+
+A. Count of unique households: Measure the total number of unique households in the Demographic table.
+
+B. Household composition distribution: Analyze the distribution of household compositions (HH_COMP_DESC) to understand the 
+   composition of households.
+   
+C. Age distribution: Calculate the percentage or count of customers in different age groups (AGE_DESC).
+
+D. Marital status distribution: Analyze the proportion of customers in different marital status categories (MARITAL_STATUS_CODE).
+
+E. Income distribution: Determine the distribution of customers across income levels (INCOME_DESC).
+
+F. Homeownership distribution: Calculate the percentage or count of customers who own or rent their homes (HOMEOWNER_DESC).*/
+
+-------------------------------------------------------------------------------------------------------------------------
+
+-- >> A. Count of unique households: Measure the total number of unique households in the Demographic table.
+
+select * from demographic_RAW;
+
+select count(distinct HOUSEHOLD_KEY) As Total_Household from demographic_RAW;
+-------------------------------------------------------------------------------------------------------------------------
+
+-- >> B. Household composition distribution: Analyze the distribution of household compositions (HH_COMP_DESC) to understand the 
+-- >>    composition of households.
+
+select 
+        HH_COMP_DESC As Family_members,
+        count(distinct HOUSEHOLD_KEY) As Total_Household
+from demographic_RAW
+group by 1;
+
+---------------------------------------------------------------------------------------------------------------------------
+
+-- >> C. Age distribution: Calculate the percentage or count of customers in different age groups (AGE_DESC).
+
+select
+      AGE_DESC As Age_Group,
+      count(distinct HOUSEHOLD_KEY) As Total_Household,
+      round((count(distinct HOUSEHOLD_KEY)/(select count(distinct HOUSEHOLD_KEY) from demographic_RAW)) * 100, 2) As Percentage_Agewise
+from demographic_RAW
+group by 1
+order by 1;
+----------------------------------------------------------------------------------------------------------------------------
+
+-- >> D. Marital status distribution: Analyze the proportion of customers in different marital status categories 
+-- >>    (MARITAL_STATUS_CODE).
+
+select * from demographic_raw;
+
+select
+      MARITAL_STATUS_CODE As MARITAL_STATUS,
+      count(distinct HOUSEHOLD_KEY) As Total_Household,
+      round((count(distinct HOUSEHOLD_KEY)/(select count(distinct HOUSEHOLD_KEY) from demographic_RAW)) * 100, 2) As Percentage_MARITAL_STATUS
+from demographic_RAW
+group by 1
+order by 1;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> E. Income distribution: Determine the distribution of customers across income levels (INCOME_DESC).
+
+select * from demographic_raw;
+
+
+select
+      INCOME_DESC As Income,
+      count(distinct HOUSEHOLD_KEY) As Total_Household,
+      round((count(distinct HOUSEHOLD_KEY)/(select count(distinct HOUSEHOLD_KEY) from demographic_RAW)) * 100, 2) As Percentage_Incomewise
+from demographic_RAW
+group by 1
+order by 1;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> F. Homeownership distribution: Calculate the percentage or count of customers who own or rent their homes (HOMEOWNER_DESC)
+
+select
+      HOMEOWNER_DESC As Homeowner,
+      count(distinct HOUSEHOLD_KEY) As Total_Household,
+      round((count(distinct HOUSEHOLD_KEY)/(select count(distinct HOUSEHOLD_KEY) from demographic_RAW)) * 100, 2) As Percentage_Homeowner
+from demographic_RAW
+group by 1
+order by 1;
+------------------------------------------------------------------------------------------------------------------------------
+
+/*                                                2. Campaign KPIs:
+
+A. Number of campaigns: Count the total number of campaigns in the Campaign table.
+
+B. Campaign duration: Calculate the duration of each campaign by subtracting the 
+   start day from the end day (in the Campaign_desc table).
+   
+C. Campaign effectiveness: Analyze the number of households associated with each
+   campaign (in the Campaign table) to measure campaign reach.*/
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> A. Number of campaigns: Count the total number of campaigns in the Campaign table.
+
+select * from campaign_desc_new;
+
+select count(CAMPAIGN)As Total_Campaign from campaign_desc_new;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> B. Campaign duration: Calculate the duration of each campaign by subtracting the 
+-- >>    start day from the end day (in the Campaign_desc table).
+
+select * from campaign_desc_new;
+
+select 
+      CAMPAIGN,
+      round(AVG(CAMPAIGN_DURATION), 2)As Avg_Duration
+from campaign_desc_new
+group by 1
+order by 1;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> C. Campaign effectiveness: Analyze the number of households associated with each campaign (in the Campaign table) 
+-- >>    to measure campaign reach.
+
+select * from campaign_raw;
+
+select
+      CAMPAIGN,
+      count(distinct HOUSEHOLD_KEY)As Total_Household
+from campaign_raw
+group by 1
+order by 1;
+-------------------------------------------------------------------------------------------------------------------------------
+
+/*                                                   3. Coupon KPIs:
+
+A. Coupon redemption rate: Calculate the percentage of coupons redeemed (from the
+   coupon_redempt table) compared to the total number of coupons distributed (from the Coupon table).
+   
+B. Coupon usage by campaign: Measure the number of coupon redemptions (from
+   the coupon_redempt table) for each campaign (in the Coupon table).*/
+-------------------------------------------------------------------------------------------------------------------------------
+
+-- >> A. Coupon redemption rate: Calculate the percentage of coupons redeemed (from the
+-- >> coupon_redempt table) compared to the total number of coupons distributed (from the Coupon table).
+
+
+-- Calculate the total number of redeemed coupons
+WITH RedeemedCoupons AS (
+    SELECT COUNT(DISTINCT COUPON_UPC) AS redeemed_count
+    FROM COUPON_REDEMPT_RAW
+),
+
+-- Calculate the total number of distributed coupons
+DistributedCoupons AS (
+    SELECT COUNT(DISTINCT COUPON_UPC) AS distributed_count
+    FROM COUPON_RAW
+)
+
+-- Calculate the coupon redemption rate
+SELECT 
+    r.redeemed_count,
+    d.distributed_count,
+    ROUND((r.redeemed_count / d.distributed_count) * 100, 2) AS redemption_rate_percentage
+FROM 
+    RedeemedCoupons r,
+    DistributedCoupons d;
+-------------------------------------------------------------------------------------------------------------------------------
+
+-- >> B. Coupon usage by campaign: Measure the number of coupon redemptions (from
+-- >> the coupon_redempt table) for each campaign (in the Coupon table)
+
+SELECT 
+    cr.CAMPAIGN,
+    COUNT(distinct crr.COUPON_UPC) AS Total_Redemptions
+FROM 
+    COUPON_RAW cr
+INNER JOIN 
+    COUPON_REDEMPT_RAW crr ON cr.COUPON_UPC = crr.COUPON_UPC
+GROUP BY 
+    cr.CAMPAIGN
+ORDER BY 
+    cr.CAMPAIGN;
+--------------------------------------------------------------------------------------------------------------------------------
+
+/*                                                  4. Product KPIs:
+
+A. Sales value: Calculate the total sales value for each product (in the Transaction_data table) to identify top-selling products.
+
+B. Manufacturer distribution: Analyze the distribution of products across different
+   manufacturers (in the Product table).
+   
+C. Department-wise sales: Measure the sales value by department (in the Product table) to understand which departments contribute 
+   most to revenue.
+   
+D. Brand-wise sales: Calculate the sales value for each brand (in the Product table) to identify top-selling brands.*/
+--------------------------------------------------------------------------------------------------------------------------------
+
+-- >> A. Sales value: Calculate the total sales value for each product (in the Transaction_data table) to identify top-selling products.
+
+
+select
+     prd.commodity_desc,
+     sum(SALES_VALUE)As Total_sales
+from transaction_new As trnx
+INNER JOIN product_raw As prd
+ON trnx.product_id = prd.product_id
+group by 1
+order by Total_sales desc;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> B. Manufacturer distribution: Analyze the distribution of products across different manufacturers (in the Product table).
+
+select * from product_raw;
+
+select
+     MANUFACTURER,
+     count(distinct PRODUCT_ID)As Total_products
+from product_raw
+group by 1
+order by Total_products desc;
+-----------------------------------------------------------------------------------------------------------------------------
+
+-- >> C. Department-wise sales: Measure the sales value by department (in the Product table) to understand which departments
+-- >>    contribute most to revenue.
+
+select
+      prd.DEPARTMENT,
+      SUM(trnx.SALES_VALUE)As Total_sales
+from product_raw As prd
+INNER JOIN transaction_new As trnx
+ON prd.product_id = trnx.product_id
+group by 1
+order by Total_sales desc;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> D. Brand-wise sales: Calculate the sales value for each brand (in the Product table) to identify top-selling brands.
+
+
+select
+      prd.BRAND,
+      SUM(trnx.SALES_VALUE)As Total_sales
+from product_raw As prd
+INNER JOIN transaction_new As trnx
+ON prd.product_id = trnx.product_id
+group by 1
+order by Total_sales desc;
+-------------------------------------------------------------------------------------------------------------------------------
+
+/*                                                5. Transaction KPIs:
+
+A. Total sales value: Calculate the sum of sales values (in the Transaction_data table) to measure overall revenue.
+
+B. Average transaction value: Calculate the average sales value per transaction to understand customer spending patterns.
+
+C. Quantity sold: Measure the total quantity sold (in the Transaction_data table) to understand product demand.
+
+D. Discounts: Analyze the amount and impact of discounts (RETAIL_DISC, COUPON_DISC, COUPON_MATCH_DISC) on sales value.
+
+E. Analyze sales trends across different seasons. */
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> A. Total sales value: Calculate the sum of sales values (in the Transaction_data table) to measure overall revenue.
+
+select * from transaction_new;
+
+select round(sum(SALES_VALUE))As Total_revenue from transaction_new;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> B. Average transaction value: Calculate the average sales value per transaction to understand customer spending patterns.
+
+
+SELECT ROUND(AVG(SALES_VALUE), 2) AS Average_Transaction_Value
+FROM TRANSACTION_NEW;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> C. Quantity sold: Measure the total quantity sold (in the Transaction_data table) to understand product demand.
+
+
+SELECT SUM(QUANTITY) AS Total_Quantity_Sold
+FROM TRANSACTION_NEW;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> D. Discounts: Analyze the amount and impact of discounts (RETAIL_DISC, COUPON_DISC, COUPON_MATCH_DISC) on sales value.
+
+
+with DiscountedSales As
+(SELECT 
+    SUM(RETAIL_DISC) AS Total_Retail_Discounts,
+    SUM(COUPON_DISC) AS Total_Coupon_Discounts,
+    SUM(COUPON_MATCH_DISC) AS Total_Coupon_Match_Discounts,
+    SUM(RETAIL_DISC + COUPON_DISC + COUPON_MATCH_DISC) AS Total_Discounts_Applied,
+    sum(SALES_VALUE)As Total_revenue
+FROM TRANSACTION_NEW
+)
+SELECT
+     Total_Retail_Discounts,
+     Total_Coupon_Discounts,
+     Total_Coupon_Match_Discounts,
+     Total_Discounts_Applied,
+     Total_revenue,
+     (Total_revenue - Total_Discounts_Applied)As Grand_Total_Sales_After_Discounts
+FROM DiscountedSales;
+------------------------------------------------------------------------------------------------------------------------------
+
+-- >> E. Analyze sales trends across different seasons
+
+SELECT
+    EXTRACT(MONTH FROM DATE)As START_MONTH,
+    SUM(SALES_VALUE) AS Total_Sales,
+    COUNT(DISTINCT BASKET_ID) AS Total_Transactions,
+    AVG(SALES_VALUE) AS Avg_Sales_Per_Transaction
+FROM 
+    TRANSACTION_NEW
+GROUP BY 
+    START_MONTH
+ORDER BY 
+    START_MONTH;
+
+--------------------------------------------------------------------------------------------------------------------------------
+
+-->> Stored procedure
+
+CREATE OR REPLACE PROCEDURE Household_kpi()
+RETURNS STRING
+LANGUAGE SQL
+AS
+$$
+BEGIN
+    CREATE OR REPLACE TABLE Household_kpi AS 
+    (
+        SELECT 
+            T.HOUSEHOLD_KEY,
+            D.AGE_DESC,
+            D.MARITAL_STATUS_CODE,
+            D.INCOME_DESC,
+            AVG(T.SALES_VALUE) AS AVG_AMOUNT,
+            AVG(T.RETAIL_DISC) AS AVG_RETAIL_DIS,
+            AVG(T.COUPON_DISC) AS AVG_COUPON_DISC,
+            AVG(T.COUPON_MATCH_DISC) AS AVG_COUP_MATCH_DISC
+        FROM 
+            TRANSACTION_NEW T
+        LEFT OUTER JOIN 
+            DEMOGRAPHIC_RAW D 
+        ON 
+            T.HOUSEHOLD_KEY = D.HOUSEHOLD_KEY
+        GROUP BY 
+            T.HOUSEHOLD_KEY, D.AGE_DESC, D.MARITAL_STATUS_CODE, D.INCOME_DESC
+        ORDER BY 
+            T.HOUSEHOLD_KEY
+    );
+    RETURN 'Household_kpi table has been successfully created or replaced';
+END;
+$$;
+
+-- To call the procedure and get the return message
+CALL Household_kpi();
+
+
+select * from Household_kpi;
